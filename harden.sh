@@ -160,6 +160,8 @@ if [[ "$LANG_CODE" == "es" ]]; then
     TXT_S2_SET_PASS="Ahora define una contraseña segura para el usuario"
     TXT_S2_PASS_TIP="  (Usa letras, números y símbolos. Mínimo 12 caracteres recomendados)"
     TXT_S2_SUDO_ADDED="Permisos de administrador (sudo) asignados correctamente."
+    TXT_S2_RELOGIN_WARN="Los permisos sudo se activan al iniciar sesión nueva."
+    TXT_S2_RELOGIN_TIP="Para usarlos ahora mismo cierra sesión y vuelve a entrar, o usa:  su - $username"
     TXT_S2_DISABLE_ROOT_ASK="¿Deshabilitar el acceso de root por SSH?"
     TXT_S2_DISABLE_ROOT_TIP="  Recomendado. Asegúrate primero de que tu nuevo usuario funciona."
     TXT_S2_ROOT_DISABLED="Acceso de root por SSH deshabilitado."
@@ -327,6 +329,8 @@ else
     TXT_S2_SET_PASS="Now set a strong password for user"
     TXT_S2_PASS_TIP="  (Use letters, numbers and symbols. At least 12 characters recommended)"
     TXT_S2_SUDO_ADDED="Administrator (sudo) permissions granted successfully."
+    TXT_S2_RELOGIN_WARN="Sudo permissions take effect on a new login session."
+    TXT_S2_RELOGIN_TIP="To use sudo right now, log out and back in, or run:  su - $username"
     TXT_S2_DISABLE_ROOT_ASK="Disable direct root login via SSH?"
     TXT_S2_DISABLE_ROOT_TIP="  Recommended. Make sure your new user works before doing this."
     TXT_S2_ROOT_DISABLED="Root SSH login disabled."
@@ -589,6 +593,9 @@ step2_user() {
     if groups "$username" | grep -qw sudo; then
         success "$TXT_S2_SUDO_ADDED"
         _log "User $username added to sudo group"
+        blank
+        warning "$TXT_S2_RELOGIN_WARN"
+        echo -e "  ${YELLOW}  $TXT_S2_RELOGIN_TIP${NC}"
     else
         error "No se pudo asignar sudo a $username. Intenta manualmente: usermod -aG sudo $username"
         _log "ERROR: failed to add $username to sudo group"
