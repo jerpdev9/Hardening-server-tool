@@ -113,6 +113,69 @@ Al terminar, el script muestra qué pasos se completaron y cuáles se saltaron, 
 
 ---
 
+## Llave SSH — Cómo obtenerla y enviarla / SSH Key — How to get it and send it
+
+El script te pedirá tu llave pública SSH durante el paso 3. Aquí te explicamos cómo generarla y obtenerla.
+
+> The script will ask for your SSH public key during step 3. Here's how to generate it and get it.
+
+---
+
+### 1. Generar la llave (si aún no tienes una) / Generate the key (if you don't have one yet)
+
+Ejecuta esto en tu **máquina local** (no en el servidor):
+
+```bash
+ssh-keygen -t ed25519 -C "tu@email.com"
+```
+
+Acepta la ruta por defecto (`~/.ssh/id_ed25519`) y establece una contraseña opcional.
+
+---
+
+### 2. Ver tu llave pública / View your public key
+
+```bash
+cat ~/.ssh/id_ed25519.pub
+```
+
+El resultado se ve así:
+
+```
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... tu@email.com
+```
+
+Copia **todo** ese texto. El script te lo pedirá al configurar SSH.
+
+> Si usas RSA en lugar de ed25519:
+> ```bash
+> cat ~/.ssh/id_rsa.pub
+> ```
+
+---
+
+### 3. Enviar la llave al servidor (alternativa manual) / Send the key to the server (manual alternative)
+
+Si prefieres configurar el acceso por llave **antes** de ejecutar el script, usa `ssh-copy-id`:
+
+```bash
+ssh-copy-id -i ~/.ssh/id_ed25519.pub root@IP_DE_TU_SERVIDOR
+```
+
+O manualmente, pegando la llave desde el servidor:
+
+```bash
+# Conéctate al servidor
+ssh root@IP_DE_TU_SERVIDOR
+
+# Crea el directorio y el archivo si no existen
+mkdir -p ~/.ssh && chmod 700 ~/.ssh
+nano ~/.ssh/authorized_keys   # pega aquí tu llave pública
+chmod 600 ~/.ssh/authorized_keys
+```
+
+---
+
 ## Pasos incluidos / Included steps
 
 | # | Español | English | Descripción |

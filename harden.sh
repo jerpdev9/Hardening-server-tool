@@ -205,6 +205,12 @@ if [[ "$LANG_CODE" == "es" ]]; then
     TXT_S3_TEST_OK="Configuración SSH verificada correctamente."
     TXT_S3_TEST_ERR="Error en la configuración. Restaurando el respaldo automáticamente..."
     TXT_S3_RESTARTING="Reiniciando el servicio SSH..."
+    TXT_S3_SOCKET_CHECK="Verificando si el sistema usa socket activation (Ubuntu 22.04+)..."
+    TXT_S3_SOCKET_FOUND="Socket SSH detectado. Actualizando puerto en el socket..."
+    TXT_S3_SOCKET_OK="Socket SSH actualizado al nuevo puerto."
+    TXT_S3_PORT_VERIFY="Verificando que SSH está escuchando en el puerto"
+    TXT_S3_PORT_OK="SSH confirmado escuchando en el puerto"
+    TXT_S3_PORT_FAIL="Advertencia: no se pudo confirmar que SSH escucha en el puerto"
     TXT_S3_OK="SSH configurado y reiniciado correctamente."
     TXT_S3_FINAL_1="Recuerda: ahora debes conectarte con:"
     TXT_S3_FINAL_2="Si configuraste un usuario nuevo, usa ese en lugar de root."
@@ -365,6 +371,12 @@ else
     TXT_S3_TEST_OK="SSH configuration verified successfully."
     TXT_S3_TEST_ERR="Configuration error found. Automatically restoring backup..."
     TXT_S3_RESTARTING="Restarting SSH service..."
+    TXT_S3_SOCKET_CHECK="Checking if the system uses socket activation (Ubuntu 22.04+)..."
+    TXT_S3_SOCKET_FOUND="SSH socket detected. Updating port in the socket..."
+    TXT_S3_SOCKET_OK="SSH socket updated to the new port."
+    TXT_S3_PORT_VERIFY="Verifying that SSH is listening on port"
+    TXT_S3_PORT_OK="SSH confirmed listening on port"
+    TXT_S3_PORT_FAIL="Warning: could not confirm SSH is listening on port"
     TXT_S3_OK="SSH configured and restarted successfully."
     TXT_S3_FINAL_1="Remember: connect to your server using:"
     TXT_S3_FINAL_2="If you created a new user, use that instead of root."
@@ -722,22 +734,52 @@ step3_ssh() {
         _log "PasswordAuthentication disabled"
     fi
 
-    # ── Verificar y reiniciar / Test and restart ──────────────────────────────
+    # ── Verificar configuración / Validate config ─────────────────────────────
     blank
     info "$TXT_S3_TESTING"
-    if sshd -t 2>/dev/null; then
-        success "$TXT_S3_TEST_OK"
-        blank
-        info "$TXT_S3_RESTARTING"
-        systemctl restart sshd
-        success "$TXT_S3_OK"
-    else
+    if ! sshd -t 2>/dev/null; then
         error "$TXT_S3_TEST_ERR"
         cp /etc/ssh/sshd_config.bak /etc/ssh/sshd_config
-        systemctl restart sshd
+        systemctl restart sshd 2>/dev/null || systemctl restart ssh
         warning "SSH configuration restored to original."
         _log "SSH config restored from backup due to error"
+        press_enter
+        return
     fi
+    success "$TXT_S3_TEST_OK"
+
+    # ── Actualizar socket si existe / Update socket if present ────────────────
+    blank
+    info "$TXT_S3_SOCKET_CHECK"
+    if systemctl is-active ssh.socket &>/dev/null || systemctl is-enabled ssh.socket &>/dev/null 2>/dev/null; then
+        info "$TXT_S3_SOCKET_FOUND"
+        mkdir -p /etc/systemd/system/ssh.socket.d/
+        printf "[Socket]\nListenStream=\nListenStream=%s\n" "$SSH_PORT" \
+            > /etc/systemd/system/ssh.socket.d/override.conf
+        systemctl daemon-reload
+        systemctl restart ssh.socket
+        success "$TXT_S3_SOCKET_OK"
+        _log "ssh.socket updated to port $SSH_PORT"
+    fi
+
+    # ── Reiniciar servicio / Restart service ──────────────────────────────────
+    blank
+    info "$TXT_S3_RESTARTING"
+    systemctl restart sshd 2>/dev/null || systemctl restart ssh
+    sleep 2
+
+    # ── Comprobar que escucha en el puerto / Verify listening port ────────────
+    blank
+    info "$TXT_S3_PORT_VERIFY $SSH_PORT..."
+    if ss -tlnp | grep -q ":$SSH_PORT "; then
+        success "$TXT_S3_PORT_OK $SSH_PORT."
+        _log "SSH listening confirmed on port $SSH_PORT"
+    else
+        warning "$TXT_S3_PORT_FAIL $SSH_PORT."
+        _log "Could not confirm SSH listening on port $SSH_PORT"
+    fi
+
+    success "$TXT_S3_OK"
 
     blank
     line
