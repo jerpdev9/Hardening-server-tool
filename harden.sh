@@ -206,8 +206,8 @@ if [[ "$LANG_CODE" == "es" ]]; then
     TXT_S3_TEST_ERR="Error en la configuración. Restaurando el respaldo automáticamente..."
     TXT_S3_RESTARTING="Reiniciando el servicio SSH..."
     TXT_S3_SOCKET_CHECK="Verificando si el sistema usa socket activation (Ubuntu 22.04+)..."
-    TXT_S3_SOCKET_FOUND="Socket SSH detectado. Actualizando puerto en el socket..."
-    TXT_S3_SOCKET_OK="Socket SSH actualizado al nuevo puerto."
+    TXT_S3_SOCKET_FOUND="Socket SSH detectado. Desactivándolo para que no interfiera con el nuevo puerto..."
+    TXT_S3_SOCKET_OK="Socket SSH desactivado. El servicio tomará control del puerto."
     TXT_S3_PORT_VERIFY="Verificando que SSH está escuchando en el puerto"
     TXT_S3_PORT_OK="SSH confirmado escuchando en el puerto"
     TXT_S3_PORT_FAIL="Advertencia: no se pudo confirmar que SSH escucha en el puerto"
@@ -372,8 +372,8 @@ else
     TXT_S3_TEST_ERR="Configuration error found. Automatically restoring backup..."
     TXT_S3_RESTARTING="Restarting SSH service..."
     TXT_S3_SOCKET_CHECK="Checking if the system uses socket activation (Ubuntu 22.04+)..."
-    TXT_S3_SOCKET_FOUND="SSH socket detected. Updating port in the socket..."
-    TXT_S3_SOCKET_OK="SSH socket updated to the new port."
+    TXT_S3_SOCKET_FOUND="SSH socket detected. Disabling it so it does not override the new port..."
+    TXT_S3_SOCKET_OK="SSH socket disabled. The service will now control the port directly."
     TXT_S3_PORT_VERIFY="Verifying that SSH is listening on port"
     TXT_S3_PORT_OK="SSH confirmed listening on port"
     TXT_S3_PORT_FAIL="Warning: could not confirm SSH is listening on port"
@@ -748,24 +748,23 @@ step3_ssh() {
     fi
     success "$TXT_S3_TEST_OK"
 
-    # ── Actualizar socket si existe / Update socket if present ────────────────
+    # ── Desactivar socket si existe / Disable socket if present ─────────────────
+    # ssh.socket toma control del puerto directamente e ignora sshd_config.
+    # La solución definitiva es desactivarlo y dejar que ssh.service maneje todo.
     blank
     info "$TXT_S3_SOCKET_CHECK"
     if systemctl is-active ssh.socket &>/dev/null || systemctl is-enabled ssh.socket &>/dev/null 2>/dev/null; then
         info "$TXT_S3_SOCKET_FOUND"
-        mkdir -p /etc/systemd/system/ssh.socket.d/
-        printf "[Socket]\nListenStream=\nListenStream=%s\n" "$SSH_PORT" \
-            > /etc/systemd/system/ssh.socket.d/override.conf
-        systemctl daemon-reload
-        systemctl restart ssh.socket
+        systemctl stop ssh.socket
+        systemctl disable ssh.socket
         success "$TXT_S3_SOCKET_OK"
-        _log "ssh.socket updated to port $SSH_PORT"
+        _log "ssh.socket stopped and disabled"
     fi
 
     # ── Reiniciar servicio / Restart service ──────────────────────────────────
     blank
     info "$TXT_S3_RESTARTING"
-    systemctl restart sshd 2>/dev/null || systemctl restart ssh
+    systemctl restart ssh
     sleep 2
 
     # ── Comprobar que escucha en el puerto / Verify listening port ────────────
