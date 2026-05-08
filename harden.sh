@@ -579,8 +579,20 @@ step2_user() {
     fi
 
     # Agregar a sudo / Add to sudo
-    usermod -aG sudo "$username"
-    success "$TXT_S2_SUDO_ADDED"
+    # Instalar sudo si no está presente (imágenes mínimas de Debian)
+    if ! command -v sudo &>/dev/null; then
+        apt-get install -y sudo -qq
+    fi
+    # adduser es más confiable que usermod -aG en Debian/Ubuntu
+    adduser "$username" sudo
+    # Verificar que el grupo quedó asignado
+    if groups "$username" | grep -qw sudo; then
+        success "$TXT_S2_SUDO_ADDED"
+        _log "User $username added to sudo group"
+    else
+        error "No se pudo asignar sudo a $username. Intenta manualmente: usermod -aG sudo $username"
+        _log "ERROR: failed to add $username to sudo group"
+    fi
 
     # Deshabilitar root en SSH / Disable root SSH
     line
