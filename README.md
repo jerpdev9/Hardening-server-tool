@@ -1,4 +1,4 @@
-# 🛡️ VPS Hardener
+# 🛡️ Hardening Server Tool
 
 **Herramienta interactiva de endurecimiento para servidores Ubuntu y Debian.**
 Guía al usuario paso a paso, explicando cada acción antes de ejecutarla. Disponible en **Español e Inglés**.
